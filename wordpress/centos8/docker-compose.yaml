@@ -1,0 +1,70 @@
+# Copyright (C) 2021 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+version: '3.3'
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    cap_add:
+      - SYS_NICE
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MYSQL_USER=${MYSQL_USER:-user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-wordpress}
+    volumes:
+      - mysqldata:/var/lib/mysql
+    command: '--default-authentication-plugin=mysql_native_password --back-log=1000 --log-raw=OFF'
+    networks:
+      - wordpress-network
+
+  wordpress:
+    depends_on:
+      - mysql
+    image: wordpress:5.7.0-php7.3-fpm-alpine
+    container_name: wordpress
+    restart: unless-stopped
+    environment:
+      - WORDPRESS_DB_HOST=mysql:3306
+      - WORDPRESS_DB_USER=${MYSQL_USER:-user}
+      - WORDPRESS_DB_PASSWORD=${MYSQL_PASSWORD:-password}
+      - WORDPRESS_DB_NAME=${MYSQL_DATABASE:-wordpress}
+    volumes:
+      - wordpressdata:/var/www/html
+      - ./www.conf:/usr/local/etc/php-fpm.d/www.conf
+    networks:
+      - wordpress-network
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - wordpress
+    image: crypto-reference-stack-wordpress
+    container_name: nginx
+    restart: unless-stopped
+    environment:
+      - SSL_ASYNC=${SSL_ASYNC:-off}
+      - NGINX_WP=${NGINX_WP:-2}
+      - NGINX_CIPHER=${NGINX_CIPHER:-TLS_AES_256_GCM_SHA384:ECDH:ECDSA:secp384r1}
+      - NGINX_HTTP=${NGINX_HTTP:-0}
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - wordpressdata:/var/www/html
+    networks:
+      - wordpress-network
+
+volumes:
+  wordpressdata:
+  mysqldata:
+
+networks:
+  wordpress-network:
+    driver: bridge
