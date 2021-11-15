@@ -1,7 +1,7 @@
 # Copyright (C) 2021 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-FROM centos:centos8.3.2011 AS compile-stage
+FROM centos:centos8.4.2105 AS compile-stage
 
 RUN dnf -y install epel-release && \
     dnf -y update && \
